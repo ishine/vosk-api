@@ -46,22 +46,25 @@ protected:
     friend class KaldiRecognizer;
 
     std::string nnet3_rxfilename_;
-    std::string fst_rxfilename_;
+    std::string hcl_fst_rxfilename_;
+    std::string g_fst_rxfilename_;
     std::string word_syms_rxfilename_;
+    std::string disambig_rxfilename_;
 
     kaldi::OnlineEndpointConfig endpoint_config_;
     kaldi::LatticeFasterDecoderConfig nnet3_decoding_config_;
     kaldi::nnet3::NnetSimpleLoopedComputationOptions decodable_opts_;
-
     kaldi::OnlineNnet2FeaturePipelineInfo feature_info_;
-    kaldi::BaseFloat sample_frequency_;
 
     kaldi::nnet3::DecodableNnetSimpleLoopedInfo *decodable_info_;
-    fst::Fst<fst::StdArc> *decode_fst_;
     kaldi::TransitionModel *trans_model_;
     kaldi::nnet3::AmNnetSimple *nnet_;
-    fst::SymbolTable *word_syms_;
+    const fst::SymbolTable *word_syms_;
     kaldi::WordBoundaryInfo *winfo_;
+    std::vector<int32> disambig_;
+
+    fst::Fst<fst::StdArc> *hcl_fst_;
+    fst::Fst<fst::StdArc> *g_fst_;
 };
 
 #endif /* model_H_ */

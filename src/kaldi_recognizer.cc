@@ -6,15 +6,17 @@
 using namespace fst;
 using namespace kaldi::nnet3;
 
-KaldiRecognizer::KaldiRecognizer(Model &model) : model_(model) {
+KaldiRecognizer::KaldiRecognizer(Model &model, float sample_frequency) : model_(model), sample_frequency_(sample_frequency) {
 
     feature_pipeline_ = new kaldi::OnlineNnet2FeaturePipeline (model_.feature_info_);
     silence_weighting_ = new kaldi::OnlineSilenceWeighting(*model_.trans_model_, model_.feature_info_.silence_weighting_config, 3);
 
+    decode_fst_ = LookaheadComposeFst(*model_.hcl_fst_, *model_.g_fst_, model_.disambig_);
+
     decoder_ = new kaldi::SingleUtteranceNnet3Decoder(model_.nnet3_decoding_config_,
             *model_.trans_model_,
             *model_.decodable_info_,
-            *model_.decode_fst_,
+            *decode_fst_,
             feature_pipeline_);
 
     frame_offset_ = 0;
@@ -24,8 +26,8 @@ KaldiRecognizer::KaldiRecognizer(Model &model) : model_(model) {
 KaldiRecognizer::~KaldiRecognizer() {
     delete feature_pipeline_;
     delete silence_weighting_;
-
     delete decoder_;
+    delete decode_fst_;
 }
 
 void KaldiRecognizer::CleanUp()
@@ -50,20 +52,41 @@ void KaldiRecognizer::UpdateSilenceWeights()
     }
 }
 
-bool KaldiRecognizer::AcceptWaveform(const char *data, int len) 
+bool KaldiRecognizer::AcceptWaveform(const char *data, int len)
 {
+    Vector<BaseFloat> wave;
+    wave.Resize(len / 2, kUndefined);
+    for (int i = 0; i < len / 2; i++)
+        wave(i) = *(((short *)data) + i);
+    return AcceptWaveform(wave);
+}
 
+bool KaldiRecognizer::AcceptWaveform(const short *sdata, int len)
+{
+    Vector<BaseFloat> wave;
+    wave.Resize(len, kUndefined);
+    for (int i = 0; i < len; i++)
+        wave(i) = sdata[i];
+    return AcceptWaveform(wave);
+}
+
+bool KaldiRecognizer::AcceptWaveform(const float *fdata, int len)
+{
+    Vector<BaseFloat> wave;
+    wave.Resize(len, kUndefined);
+    for (int i = 0; i < len; i++)
+        wave(i) = fdata[i];
+    return AcceptWaveform(wave);
+}
+
+bool KaldiRecognizer::AcceptWaveform(Vector<BaseFloat> &wdata)
+{
     if (input_finalized_) {
         CleanUp();
         input_finalized_ = false;
     }
 
-    Vector<BaseFloat> wave;
-    wave.Resize(len / 2, kUndefined);
-    for (int i = 0; i < len / 2; i++)
-        wave(i) = *(((short *)data) + i);
-
-    feature_pipeline_->AcceptWaveform(model_.sample_frequency_, wave);
+    feature_pipeline_->AcceptWaveform(sample_frequency_, wdata);
     UpdateSilenceWeights();
     decoder_->AdvanceDecoding();
 
@@ -82,12 +105,9 @@ std::string KaldiRecognizer::Result()
         input_finalized_ = true;
     }
 
-    if (decoder_->NumFramesDecoded() == 0) {
-        return "{\"result\" : [], \"text\" : \"\"}";
-    }
-
     kaldi::CompactLattice clat;
     decoder_->GetLattice(true, &clat);
+    fst::ScaleLattice(fst::LatticeScale(8.0, 10.0), &clat);
 
     CompactLattice aligned_lat;
     WordAlignLattice(clat, *model_.trans_model_, *model_.winfo_, 0, &aligned_lat);
