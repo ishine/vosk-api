@@ -1,0 +1,25 @@
+import setuptools
+
+with open("../README.md", "r") as fh:
+    long_description = fh.read()
+
+setuptools.setup(
+    name="vosk", # Replace with your own username
+    version="0.1",
+    author="Alpha Cephei Inc",
+    author_email="contact@alphacephei.com",
+    description="API for Kaldi and Vosk",
+    long_description=long_description,
+    long_description_content_type="text/markdown",
+    url="https://github.com/alphacep/vosk-api",
+    packages=setuptools.find_packages(),
+    classifiers=[
+        'Programming Language :: Python :: 3',
+        'License :: OSI Approved :: Apache Software License',
+        'Operating System :: Microsoft :: Windows',
+        'Operating System :: POSIX :: Linux',
+        'Operating System :: MacOS :: MacOS X',
+        'Topic :: Software Development :: Libraries :: Python Modules'
+    ],
+    python_requires='>=3.6',
+)
