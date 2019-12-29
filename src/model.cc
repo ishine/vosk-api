@@ -1,5 +1,6 @@
 #include "model.h"
 
+#include <sys/stat.h>
 #include <fst/fst.h>
 #include <fst/register.h>
 #include <fst/matcher-fst.h>
@@ -84,9 +85,11 @@ Model::Model(const char *model_path) {
     feature_info_.ivector_extractor_info.Init(ivector_extraction_opts);
 
     nnet3_rxfilename_ = model_path_str + "/final.mdl";
+    hclg_fst_rxfilename_ = model_path_str + "/HCLG.fst";
     hcl_fst_rxfilename_ = model_path_str + "/HCLr.fst";
     g_fst_rxfilename_ = model_path_str + "/Gr.fst";
     disambig_rxfilename_ = model_path_str + "/disambig_tid.int";
+    word_syms_rxfilename_ = model_path_str + "/words.txt";
 
     trans_model_ = new kaldi::TransitionModel();
     nnet_ = new kaldi::nnet3::AmNnetSimple();
@@ -102,12 +105,22 @@ Model::Model(const char *model_path) {
 
     decodable_info_ = new nnet3::DecodableNnetSimpleLoopedInfo(decodable_opts_,
                                                                nnet_);
-    hcl_fst_ = fst::StdFst::Read(hcl_fst_rxfilename_);
-    g_fst_ = fst::StdFst::Read(g_fst_rxfilename_);
-
-    word_syms_ = g_fst_->OutputSymbols();
-    if (word_syms_ == NULL)
-        KALDI_ERR << "No word symbols in the grammar";
+    struct stat buffer;
+    if (stat(hclg_fst_rxfilename_.c_str(), &buffer) == 0) {
+        hclg_fst_ = fst::ReadFstKaldiGeneric(hclg_fst_rxfilename_);
+        hcl_fst_ = NULL;
+        g_fst_ = NULL;
+        if (!(word_syms_ = fst::SymbolTable::ReadText(word_syms_rxfilename_)))
+            KALDI_ERR << "Could not read symbol table from file "
+                      << word_syms_rxfilename_;
+    } else {
+        hclg_fst_ = NULL;
+        hcl_fst_ = fst::StdFst::Read(hcl_fst_rxfilename_);
+        g_fst_ = fst::StdFst::Read(g_fst_rxfilename_);
+        word_syms_ = g_fst_->OutputSymbols();
+        if (word_syms_ == NULL)
+             KALDI_ERR << "No word symbols in the grammar";
+    }
 
     kaldi::WordBoundaryInfoNewOpts opts;
     winfo_ = new kaldi::WordBoundaryInfo(opts, model_path_str + "/word_boundary.int");
@@ -120,6 +133,7 @@ Model::~Model() {
     delete trans_model_;
     delete nnet_;
     delete winfo_;
+    delete hclg_fst_;
     delete hcl_fst_;
     delete g_fst_;
 }

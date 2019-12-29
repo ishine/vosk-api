@@ -57,7 +57,7 @@ class CMakeBuildExt(build_ext):
             subprocess.check_call(cmake_args,
                                   cwd=self.build_temp,
                                   env=env)
-            subprocess.check_call(['make', 'VERBOSE=1', '-j', ext.name],
+            subprocess.check_call(['make', 'VERBOSE=1', ext.name],
                                   cwd=self.build_temp,
                                   env=env)
             print()

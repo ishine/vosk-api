@@ -4,7 +4,7 @@ project(vosk)
 
 find_package (Python COMPONENTS Interpreter Development)
 
-set(KALDI_ROOT "/home/shmyrev/kaldi-lookahead")
+set(KALDI_ROOT "$ENV{HOME}/kaldi")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -DFST_NO_DYNAMIC_LINKING")
 include_directories("../src" "${KALDI_ROOT}/src" "${KALDI_ROOT}/tools/openfst/include" ${Python_INCLUDE_DIR})
 

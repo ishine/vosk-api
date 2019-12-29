@@ -11,12 +11,18 @@ KaldiRecognizer::KaldiRecognizer(Model &model, float sample_frequency) : model_(
     feature_pipeline_ = new kaldi::OnlineNnet2FeaturePipeline (model_.feature_info_);
     silence_weighting_ = new kaldi::OnlineSilenceWeighting(*model_.trans_model_, model_.feature_info_.silence_weighting_config, 3);
 
-    decode_fst_ = LookaheadComposeFst(*model_.hcl_fst_, *model_.g_fst_, model_.disambig_);
+    decode_fst_ = NULL;
+    fst::Fst<fst::StdArc> *graph_fst = model_.hclg_fst_;
+
+    if (graph_fst == NULL) {
+        decode_fst_ = LookaheadComposeFst(*model_.hcl_fst_, *model_.g_fst_, model_.disambig_);
+        graph_fst = decode_fst_;
+    }
 
     decoder_ = new kaldi::SingleUtteranceNnet3Decoder(model_.nnet3_decoding_config_,
             *model_.trans_model_,
             *model_.decodable_info_,
-            *decode_fst_,
+            *graph_fst,
             feature_pipeline_);
 
     frame_offset_ = 0;
